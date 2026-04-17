@@ -6,7 +6,7 @@ allowed-tools: Bash(ls *), Bash(cat *), Bash(find *), Bash(readlink *), Bash(dif
 
 # Link Project to Shared Repo
 
-Connect a project to `~/repos/claude-shared/` by symlinking shared skills into the project's `.claude/skills/`, then identify and propose cleanup of any now-redundant project-local files.
+Connect a project to `/d/claude/claude-shared/` by symlinking shared skills into the project's `.claude/skills/`, then identify and propose cleanup of any now-redundant project-local files.
 
 ## When to use
 
@@ -17,11 +17,11 @@ Connect a project to `~/repos/claude-shared/` by symlinking shared skills into t
 
 ## Shared repo location
 
-`~/repos/claude-shared/`
+`/d/claude/claude-shared/`
 
-Script: `~/repos/claude-shared/scripts/link-project.sh`
-Skills source: `~/repos/claude-shared/skills/`
-Global CLAUDE.md reference: `~/repos/claude-shared/CLAUDE.md`
+Script: `/d/claude/claude-shared/scripts/link-project.sh`
+Skills source: `/d/claude/claude-shared/skills/`
+Global CLAUDE.md reference: `/d/claude/claude-shared/CLAUDE.md`
 
 ## Workflow
 
@@ -130,7 +130,7 @@ Ask the developer:
 
 **Linking:**
 ```bash
-bash ~/repos/claude-shared/scripts/link-project.sh "$PROJECT"
+bash /d/claude/claude-shared/scripts/link-project.sh "$PROJECT"
 # or with --skills filter if the developer specified a subset
 ```
 
@@ -139,7 +139,7 @@ bash ~/repos/claude-shared/scripts/link-project.sh "$PROJECT"
 # For each confirmed redundant skill:
 rm -rf "$PROJECT/.claude/skills/<skill_name>"
 # Then re-link that specific skill so the symlink replaces what was removed:
-bash ~/repos/claude-shared/scripts/link-project.sh "$PROJECT" --skills <skill_name>
+bash /d/claude/claude-shared/scripts/link-project.sh "$PROJECT" --skills <skill_name>
 ```
 
 Important: delete the project-local directory BEFORE linking, since the link script skips existing real directories.
