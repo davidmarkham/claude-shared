@@ -1,0 +1,13 @@
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor files
+*.swp
+*.swo
+*~
+
+# Don't track the example file after initial setup
+# (delete this line if you want to keep it as reference)
+queue/EXAMPLE_*.md

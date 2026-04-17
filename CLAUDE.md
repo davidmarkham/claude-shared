@@ -90,4 +90,5 @@ When working on Salesforce code, follow the `/sf-code-standards` skill automatic
 - `/sf-code-standards` — Salesforce/LWC coding standards and review conventions
 - `/load-ticket` — Load the next decoded ticket from the queue
 - `/work-session` — Full work session lifecycle management
+- `/link-project` — Connect a project to the shared repo, clean up redundant config
 - `/project-setup` — Scan a codebase and generate project-specific .claude/ config

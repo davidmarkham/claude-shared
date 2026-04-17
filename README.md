@@ -1,22 +1,54 @@
 # Claude Shared Config
 
-Personal shared repository for Claude Code skills, commands, and configuration.
-Syncs to `~/.claude/` via symlinks so all Claude Code projects inherit shared skills.
+Personal shared repository for Claude Code skills and configuration, linked
+**per-project** on an opt-in basis. Projects that want shared skills get them
+symlinked into their own `.claude/skills/`. Projects that don't keep their own
+setup, untouched.
 
-## Quick Start
+## Architecture
 
-See **[SETUP.md](SETUP.md)** for the full step-by-step guide, including
-GitHub MCP server configuration for automatic ticket pushing.
-
-**Short version:**
-
-```bash
-# In Git Bash:
-git clone <this-repo> ~/repos/claude-shared
-cd ~/repos/claude-shared
-chmod +x scripts/sync.sh
-./scripts/sync.sh
 ```
+~/repos/claude-shared/              # This repo
+├── skills/                          # Shared skills, one dir per skill
+├── templates/                       # Starter templates (AGENTS.md, etc.)
+├── docs/                            # Reference docs (chrome integration, etc.)
+├── queue/                           # Decoded tickets from Claude chat
+└── scripts/link-project.sh          # Links this repo's skills into a project
+
+<project>/.claude/
+├── skills/
+│   ├── sf-code-standards  → symlink → ~/repos/claude-shared/skills/sf-code-standards
+│   ├── decode-ticket      → symlink → ~/repos/claude-shared/skills/decode-ticket
+│   ├── my-custom-skill/     (project-specific, real directory, not touched)
+│   └── ...
+├── CLAUDE.md                        # Project's own (not touched by link script)
+└── settings.local.json              # Project's own (not touched by link script)
+```
+
+Symlinks mean edits to shared skills are immediately live in every linked
+project — no per-project sync needed after a repo update.
+
+## Two ways to link a project
+
+### Option 1: Use the `/link-project` skill (recommended)
+
+In Claude Code, type `/link-project` (the project you're currently working
+in is assumed). The skill:
+
+1. Audits the project's current `.claude/` state
+2. Identifies redundant local skills that duplicate shared ones
+3. Flags project CLAUDE.md content that duplicates the global CLAUDE.md
+4. Shows a summary diff before anything changes
+5. Asks for per-category confirmation (link, delete, edit) separately
+6. Runs the link script and any confirmed cleanup
+
+This is the right call when onboarding an existing project that already has
+its own `.claude/` setup — you want to connect it to the shared repo *and*
+slim down any accumulated duplication in one pass.
+
+### Option 2: Run `link-project.sh` directly
+
+For scripted/quick linking with no cleanup concerns, use the script directly.
 
 ## Prerequisites
 
@@ -24,29 +56,81 @@ chmod +x scripts/sync.sh
   (Settings → System → For Developers → Developer Mode toggle)
 - Git Bash (comes with Git for Windows)
 - Claude Code extension in VS Code
-- Docker Desktop (recommended) for GitHub MCP server
-- GitHub PAT with Contents read/write on this repo
+- GitHub PAT with Contents read/write on this repo (for Desktop → queue push)
 
-## Structure
+See [SETUP.md](SETUP.md) for GitHub MCP server setup for Claude Desktop.
 
+## Using the link script
+
+All commands run in Git Bash. Paths can use forward slashes — Git Bash
+handles Windows paths transparently.
+
+### Link all shared skills into a project
+
+```bash
+~/repos/claude-shared/scripts/link-project.sh /d/IdeaProjects/NECHE-devdm
 ```
-skills/              # Shared skills (symlinked to ~/.claude/skills/)
-  decode-ticket/     # Ticket decoder for Claude Code context
-  breadcrumb/        # Session pause/resume breadcrumb notes
-  sf-code-standards/ # Salesforce/LWC coding standards & review conventions
-  sf-change-list/    # Deployment file list → grouped component summary
-  load-ticket/       # Load a decoded ticket from the queue
-  work-session/      # Full work session lifecycle management
-  project-setup/     # Scan codebase → generate project .claude/ config
-templates/           # Starter templates for project-specific config
-  AGENTS-salesforce.md  # Agent definitions template for SF projects
-docs/                # Reference docs (not loaded as skills)
-  chrome-integration.md # @browser setup and usage reference
-queue/               # Decoded tickets pushed from Claude chat app
-  archive/           # Consumed tickets moved here after loading
-scripts/             # Sync and utility scripts
-CLAUDE.md            # Global CLAUDE.md (symlinked to ~/.claude/CLAUDE.md)
+
+This symlinks every skill from `skills/` into the project's `.claude/skills/`.
+Any real directories that are already there (project-specific skills) are left
+alone.
+
+### Link only specific skills
+
+```bash
+~/repos/claude-shared/scripts/link-project.sh /d/IdeaProjects/SACSCOC-devboxdm \
+    --skills decode-ticket,breadcrumb,sf-code-standards
 ```
+
+Useful when a project only needs a subset.
+
+### List what's currently in a project's `.claude/skills/`
+
+```bash
+~/repos/claude-shared/scripts/link-project.sh /d/IdeaProjects/NECHE-devdm --list
+```
+
+Shows each skill as one of:
+- `shared (symlink)` — linked to this repo
+- `symlink (external)` — symlink pointing somewhere else
+- `project-specific` — a real directory
+
+Plus a list of available shared skills *not* currently linked there.
+
+### Remove shared symlinks (keep project-specific skills)
+
+```bash
+# Remove all shared symlinks:
+~/repos/claude-shared/scripts/link-project.sh /d/IdeaProjects/NECHE-devdm --unlink
+
+# Remove specific ones only:
+~/repos/claude-shared/scripts/link-project.sh /d/IdeaProjects/NECHE-devdm --unlink breadcrumb,sf-change-list
+```
+
+Project-specific skills are never touched.
+
+### Re-run after pulling shared repo updates
+
+The link script is idempotent. When you pull updates to this repo, the
+symlinks still point at the right place — nothing needs re-syncing. Only
+re-run the script if you pulled a **new** shared skill that a project should
+pick up:
+
+```bash
+cd ~/repos/claude-shared && git pull
+~/repos/claude-shared/scripts/link-project.sh /d/IdeaProjects/NECHE-devdm  # picks up new skills
+```
+
+## Safety guarantees
+
+The link script only touches:
+- Symlinks that already point at this repo (it may update or remove those)
+- Empty slots in `.claude/skills/` (it may add new symlinks there)
+
+It will never touch:
+- A real directory or file in `.claude/skills/`
+- A symlink pointing outside this repo
+- Anything outside of `.claude/skills/` (your CLAUDE.md, settings, AGENTS.md, etc.)
 
 ## Workflow: Chat → Claude Code ticket handoff
 
@@ -65,31 +149,25 @@ CLAUDE.md            # Global CLAUDE.md (symlinked to ~/.claude/CLAUDE.md)
 3. Run `qtix` in PowerShell (or move to `~/repos/claude-shared/queue/`)
 4. In Claude Code: `/load-ticket`
 
-### After loading
+The `/load-ticket` skill archives the consumed ticket to `queue/archive/`.
+Commit the archive move when convenient for git history.
 
-- The ticket is moved to `queue/archive/` once you start
-- Commit when convenient — git tracks the full queue history
+## Project-specific setup
+
+For a new project, after linking shared skills, run `/project-setup` in
+Claude Code. It scans the codebase and generates `.claude/CLAUDE.md`,
+`.claude/AGENTS.md`, and `.claude/settings.local.json` tailored to the
+project's actual structure.
 
 ## Updating shared skills
 
-Edit skills in this repo. Symlinks mean `~/.claude/skills/<name>` points
-directly here — changes are live immediately (Claude Code detects skill
-file changes without restart).
+Edit skills in `~/repos/claude-shared/skills/`. Changes are immediately live
+in every linked project (Claude Code picks up skill file changes without
+restart).
 
 ```bash
-git add -A && git commit -m "update skills" && git push
+cd ~/repos/claude-shared
+git add -A && git commit -m "update: [skill name]" && git push
 ```
 
-## Project-specific skills
-
-Project-specific skills go in each project's own `.claude/skills/` directory,
-committed to that project's repo. They layer on top of these shared skills.
-Precedence: enterprise > personal (~/.claude) > project (.claude).
-
-## Re-syncing after a pull
-
-```bash
-cd ~/repos/claude-shared && ./scripts/sync.sh
-```
-
-Only needed if new skills were added. Existing symlinks survive pulls.
+On another machine, `git pull` picks up the changes. No re-linking needed.
