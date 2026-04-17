@@ -103,12 +103,18 @@ skill_in_filter() {
 check_developer_mode() {
     local test_target="$TARGET_SKILLS_DIR/.dm_test_target"
     local test_link="$TARGET_SKILLS_DIR/.dm_test_link"
+    # Start clean in case a prior run left stragglers (especially copies from silent fallback)
+    rm -rf "$test_link" "$test_target" 2>/dev/null || true
     mkdir -p "$test_target"
-    if ln -s "$test_target" "$test_link" 2>/dev/null; then
+    # `ln -s` exits 0 on MSYS even when it silently falls back to copying.
+    # Verify the created entry is an actual symlink before declaring success.
+    if ln -s "$test_target" "$test_link" 2>/dev/null && [ -L "$test_link" ]; then
         rm -f "$test_link"
         rmdir "$test_target"
         return 0
     fi
+    # Either ln failed or MSYS made a copy — clean up either form
+    rm -rf "$test_link" 2>/dev/null || true
     rmdir "$test_target" 2>/dev/null || true
     return 1
 }
@@ -199,10 +205,16 @@ fi
 mkdir -p "$TARGET_SKILLS_DIR"
 
 if ! check_developer_mode; then
-    echo "ERROR: Cannot create symlinks in $TARGET_SKILLS_DIR"
+    echo "ERROR: Cannot create native symlinks in $TARGET_SKILLS_DIR"
     echo ""
-    echo "Enable Developer Mode on Windows 11:"
-    echo "  Settings → System → For Developers → Developer Mode → On"
+    echo "Two things are required on Windows + Git Bash:"
+    echo "  1. Developer Mode ON"
+    echo "     Settings → System → For Developers → Developer Mode → On"
+    echo "  2. MSYS env var set so \`ln -s\` makes real symlinks instead of silently copying"
+    echo "     Add to ~/.bashrc:  export MSYS=winsymlinks:nativestrict"
+    echo "     Then close and reopen Git Bash."
+    echo ""
+    echo "Verify with:  echo \"\$MSYS\"   (should print: winsymlinks:nativestrict)"
     echo ""
     echo "Then re-run this script."
     exit 1
